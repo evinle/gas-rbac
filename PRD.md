@@ -151,7 +151,11 @@ but a build step must additionally emit a literal top-level declaration per regi
 function listInvoices() { return __rbac.dispatch('listInvoices', arguments); }
 ```
 
-`rbac.requires` still populates the runtime registry — used for middleware composition, `audit()`, and permission metadata — but the registry can no longer double as the dispatch mechanism on its own. The codegen pass is now mandatory, not the documented contingency it was before the spike ran. Exact shape (which build hook emits the stubs, how route modules are discovered, whether the output is checked in or build-only) is an open design question — see the follow-up ticket for the redesign this spike forces. Authoring experience is otherwise unaffected: the build step is invisible to consumers, and adoption stays per route — convert one, ship it, convert the next.
+`rbac.requires` still populates the runtime registry — used for middleware composition, `audit()`, and permission metadata — but the registry can no longer double as the dispatch mechanism on its own. The codegen pass is now mandatory, not the documented contingency it was before the spike ran.
+
+**Prototyped and confirmed working** (issue #10): `rbac.requires` does not need to assign anything to `globalThis` at all. Dispatch works entirely through the generated declaration calling into the registry — a route registered purely via `registry[name] = { perm, handler }`, with no `globalThis` touch anywhere, still dispatches correctly once codegen emits its static stub, including forwarding arguments. This is simpler than the design first floated here, so it's the one to build.
+
+Still undecided about the codegen pass itself: which build hook actually runs it, how route modules are discovered across a real multi-file project, and whether generated output is checked into version control or produced fresh per build. Tracked as a follow-up ticket. Authoring experience is otherwise unaffected: the build step is invisible to consumers, and adoption stays per route — convert one, ship it, convert the next.
 
 `anyone` is a deliberate keyword, not an omission. Public endpoints exist, `doGet` among them, and reachability should always be something someone typed.
 
