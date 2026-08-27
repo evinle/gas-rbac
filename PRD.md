@@ -130,7 +130,9 @@ init({ policy, store, resolver, cache, logger? })
 
 ### Registration
 
-Registration is per route, not through a central builder. Each call assigns the route to `globalThis` as a side effect and returns the wrapped function, so the `const` binding stays useful for tests and direct calls:
+Registration is per route, not through a central builder — but dispatch requires a build step, not a bare runtime assignment. **Confirmed by spike** (issue #2, closed): `google.script.run` builds its list of callable methods by parsing source text for literal `function name() {}` declarations. A route whose only trace is a runtime `globalThis[name] = ...` assignment, with no matching declaration anywhere in source, is invisible to the client-side proxy entirely — the call fails in the browser with `... .name is not a function`, before any request reaches the server. Assigning to `globalThis` at runtime, by itself, does not make a route callable.
+
+Authoring still looks like the wrapper form:
 
 ```ts
 export const listInvoices = rbac.requires('listInvoices', 'invoice:read',
@@ -143,7 +145,13 @@ rbac.use(mw)       // global middleware, applies to every route regardless of re
 rbac.audit()       // call once at startup: flags any globalThis function not in the registry
 ```
 
-Against the plain Apps Script original (`function listInvoices() { return invoiceRepo.list(); }`), one line changes per endpoint and the body is untouched. Adoption is per route — convert one, ship it, convert the next. Nothing forces a big-bang migration and every step is reversible.
+but a build step must additionally emit a literal top-level declaration per registered route, delegating to the wrapped handler:
+
+```js
+function listInvoices() { return __rbac.dispatch('listInvoices', arguments); }
+```
+
+`rbac.requires` still populates the runtime registry — used for middleware composition, `audit()`, and permission metadata — but the registry can no longer double as the dispatch mechanism on its own. The codegen pass is now mandatory, not the documented contingency it was before the spike ran. Exact shape (which build hook emits the stubs, how route modules are discovered, whether the output is checked in or build-only) is an open design question — see the follow-up ticket for the redesign this spike forces. Authoring experience is otherwise unaffected: the build step is invisible to consumers, and adoption stays per route — convert one, ship it, convert the next.
 
 `anyone` is a deliberate keyword, not an omission. Public endpoints exist, `doGet` among them, and reachability should always be something someone typed.
 
@@ -229,7 +237,7 @@ The rebuild itself is close to free. Constructing an object and composing closur
 
 **Phase 1, core.** `definePolicy`, `PermissionOf`, role resolution, the store interface, `can`, `require`, `permissionsFor`. Pure TypeScript, no Apps Script references, tested with vitest against a fake store. This is the half that should have real test coverage.
 
-**Phase 2, the runner.** The `requires`/`anyone` wrapper, late-bound middleware composition, `audit`. Ship `context`, `auth`, `errorMask`, `logger`. The dispatch spike (Open Questions, below) must resolve before this phase, since a failure means redesigning the endpoint shape rather than just its implementation.
+**Phase 2, the runner.** The `requires`/`anyone` wrapper, late-bound middleware composition, `audit`, and the codegen build step that emits real declarations for `google.script.run` to see (see Registration, above — confirmed mandatory by spike, not optional). Ship `context`, `auth`, `errorMask`, `logger`. Codegen's exact shape needs deciding before this phase starts.
 
 **Phase 3, adapters.** `@you/rbac/gas` with the session resolver, properties store, and script cache wrapper. Split entry points so the core stays importable in Node and testable without stubbing globals.
 
@@ -241,11 +249,9 @@ Later, if asked for: Admin SDK group store, typed client wrapper, exported `runA
 
 ## Open questions
 
-**Does dynamic global assignment dispatch?** `rbac.requires(name, perm, handler)` assigns `globalThis[name]` as a side effect of module evaluation, instead of the source containing a literal `function submitInvoice()` declaration. Module top-level runs before dispatch, so it should work, but parts of Apps Script's plumbing are driven by static analysis of source, and this is an assumption, not a verified fact. Five minute spike: deploy a scratch web app that assigns one global (`globalThis.ping = () => 'pong'`) with no static declaration, and call it via `google.script.run` from the client. This is the one open item that gates the entire registration design, not just an implementation detail inside it — a failure means redesigning the endpoint shape before writing any package code, not refactoring around it.
+**~~Does dynamic global assignment dispatch?~~ Resolved: no.** Confirmed by spike (issue #2, closed): a route whose only trace is a runtime `globalThis[name] = ...` assignment, with no matching literal `function name() {}` declaration in source, is invisible to `google.script.run`'s client-side proxy. The call fails in the browser — `TypeError: ...name is not a function` — before any request reaches the server. `google.script.run` builds its callable-methods list from static analysis of source text, not from runtime `globalThis` contents, settling the assumption the PRD carried into this spike. See the Registration section above for the resulting design change: a codegen build step emitting real declarations is now mandatory. **Open follow-up:** the exact codegen shape (build hook, route-module discovery, checked-in vs. build-only output) is undecided — tracked as a new ticket rather than left implicit here.
 
-If it fails, the fallback is codegen. A build step reads the route object and emits literal stub functions that delegate to the wrapped function. Authoring experience is unchanged and there is still one source of truth.
-
-Five more platform assumptions are worth verifying in the same scratch session, since each is cheap and none require separate setup: whether `doGet` resolves a runtime-assigned global the same way (survivable if not — `doGet` is one function per app and can stay a static declaration); whether the bundler preserves a route module's registration side effect under tree shaking (mitigate regardless by keeping `sideEffects: false` out of the manifest and documenting that the entry file must import every route module); whether `globalThis` is actually present in the runtime (fall back to top-level `this` if not); whether a thrown error reaches `withFailureHandler` intact several closures deep, and without leaking the unmasked message (`errorMask` depends on this); and whether the registry detects duplicate route names and still applies a `use()` call that appears after a `requires()` call in import order (validates the late-binding decision above). None of these five gate the architecture the way the dispatch spike does — they gate documentation and error-handling correctness — but they should run before Phase 2 alongside it.
+Five more platform assumptions from the same spike plan are still open, and one is sharper now that codegen is mandatory rather than a contingency: whether `doGet` resolves a runtime-assigned global the same way (survivable if not — `doGet` is one function per app and can stay a static declaration); whether the bundler preserves a *generated* stub declaration's registration side effect under tree shaking, now that every route depends on codegen output surviving the build rather than just a fallback path (mitigate regardless by keeping `sideEffects: false` out of the manifest and documenting that the entry file must import every route module); whether `globalThis` is actually present in the runtime (fall back to top-level `this` if not); whether a thrown error reaches `withFailureHandler` intact several closures deep, and without leaking the unmasked message (`errorMask` depends on this); and whether the registry detects duplicate route names and still applies a `use()` call that appears after a `requires()` call in import order (validates the late-binding decision above). None of these five gate the architecture — they gate documentation and error-handling correctness — but they should run before Phase 2.
 
 **Should we generate a typed client?** `google.script.run.submitInvoice(data)` is an untyped runtime lookup. Nothing connects it to the handler's signature, so that boundary is genuinely unchecked. Generating an `api` object from the route map would restore type safety and hand back promises instead of `withSuccessHandler` callbacks. Additive, so it can wait, but it is the largest remaining gap.
 
