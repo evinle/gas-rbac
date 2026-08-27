@@ -2,11 +2,11 @@
 
 Status: draft for review
 Owner: TBD
-Last updated: 2026-08-24
+Last updated: 2026-08-27
 
 ## Summary
 
-An npm package that adds role-based access control to Google Apps Script projects written in TypeScript. Consumers declare a policy in code, register their endpoints through a small builder, and get every endpoint gated before its handler runs.
+An npm package that adds role-based access control to Google Apps Script projects written in TypeScript. Consumers declare a policy in code, wrap each endpoint with a small per-route function, and get it gated before its handler runs.
 
 The target is one afternoon of setup per project and no per-endpoint discipline afterward. If someone adds a route and forgets to think about permissions, that should be a compile error, not a security incident discovered later.
 
@@ -29,7 +29,7 @@ So the package has one job. Make the set of reachable functions explicit, and ma
 ## Non-goals
 
 - **Per-object rules.** "Alice can read invoice 42 but not 43" is ReBAC, not RBAC. Supporting it means shipping a policy engine, and policy engines are how small authorization libraries become unusable. Out of scope, and the API deliberately has no resource argument so nobody starts down that road by accident.
-- **Container-bound scripts.** No menus, no `onOpen`, no Sheets sidebar. This removes the only real justification for accumulating route names in the type system, which keeps the builder's types simple.
+- **Container-bound scripts.** No menus, no `onOpen`, no Sheets sidebar. This removes the only real justification for accumulating route names in the type system, which keeps each route wrapper's typing simple and self-contained.
 - **Async anything.** Covered below.
 - **A replacement for Google's identity layer.** The deployment's access setting is still the front door. This package handles everything past it.
 
@@ -115,7 +115,7 @@ The whole surface is sync, including middleware. Node builtins are also unavaila
 
 An earlier draft had a `protect(repo, permMap)` wrapper that guarded repository methods, on the theory that a new repo method should not compile until someone assigned it a permission.
 
-Cut, because it checks the same thing the route middleware already checks. The guarantee it appeared to offer was not real either. The risk is not an unguarded repo method, it is an unguarded **exposed** method, and a repo method nobody exposes is unreachable. The moment you expose it you go through the builder, which is where the permission decision belongs.
+Cut, because it checks the same thing the route middleware already checks. The guarantee it appeared to offer was not real either. The risk is not an unguarded repo method, it is an unguarded **exposed** method, and a repo method nobody exposes is unreachable. The moment you expose it you go through `rbac.requires`, which is where the permission decision belongs.
 
 Two enforcement points also raises the question of which one is load-bearing, and a future maintainer removing the wrong one is a real risk. One gate, one answer.
 
@@ -130,16 +130,26 @@ init({ policy, store, resolver, cache, logger? })
 
 ### Registration
 
+Registration is per route, not through a central builder. Each call assigns the route to `globalThis` as a side effect and returns the wrapped function, so the `const` binding stays useful for tests and direct calls:
+
 ```ts
-app.use(mw)                          // global middleware
-app.anyone(name, ...mw, handler)     // explicitly public
-app.requires(name, perm, ...mw, handler)
-app.publish()                        // assigns globals, composes middleware
+export const listInvoices = rbac.requires('listInvoices', 'invoice:read',
+  () => invoiceRepo.list()
+);
+
+export const doGet = rbac.anyone('doGet', () => renderApp());
+
+rbac.use(mw)       // global middleware, applies to every route regardless of registration order
+rbac.audit()       // call once at startup: flags any globalThis function not in the registry
 ```
+
+Against the plain Apps Script original (`function listInvoices() { return invoiceRepo.list(); }`), one line changes per endpoint and the body is untouched. Adoption is per route — convert one, ship it, convert the next. Nothing forces a big-bang migration and every step is reversible.
 
 `anyone` is a deliberate keyword, not an omission. Public endpoints exist, `doGet` among them, and reachability should always be something someone typed.
 
 Naming note: `requires` follows Spring Security's `hasPermission`, Django's `permission_required`, and NestJS's `@RequiresPermissions`. Familiar beats clever for a security primitive.
+
+The route name appears twice, once as the binding and once as the string argument — there is no way around this, since a function expression passed as an argument is anonymous and `fn.name` is empty, so `requires` cannot infer the binding it will be assigned to. This is what `audit()` exists to catch: if a `function listInvoices()` declaration gets converted to a `const` with a typo in the name string, the old declaration is left behind as a live, unguarded global while the new registration answers to a name nobody calls. `audit()` throws in development and logs in production, downgrading the guarantee from "reachable-but-unguarded is unrepresentable" to "caught on first run" — accepted deliberately, since the alternative is requiring a rewrite of every entry point before a single route benefits.
 
 ### Checks inside a handler
 
@@ -183,6 +193,8 @@ Outermost first: `errorMask` wraps `logger` wraps `context` wraps `auth` wraps t
 
 `context` must wrap `auth`, since `auth` reads the ambient principal. `errorMask` must be outermost, or an authorization failure escapes before it is sanitized.
 
+Composition happens when the handler runs, not when `requires` registers it. If composition happened at registration, a `use()` call that executed after a route was registered would silently miss it, and with routes living in separate files, import order would decide your security posture. Late binding removes that class of bug for the cost of composing a few closures per request, which is nothing next to Apps Script's startup time.
+
 ### Shipped middleware
 
 **`context()`** resolves the active user and opens ambient context. Fails closed on an empty email. If a trigger event object is present, it either installs a `system` principal or refuses, and that choice is explicit in one place rather than special-cased per handler.
@@ -217,7 +229,7 @@ The rebuild itself is close to free. Constructing an object and composing closur
 
 **Phase 1, core.** `definePolicy`, `PermissionOf`, role resolution, the store interface, `can`, `require`, `permissionsFor`. Pure TypeScript, no Apps Script references, tested with vitest against a fake store. This is the half that should have real test coverage.
 
-**Phase 2, the runner.** Builder, middleware composition, `publish`. Ship `context`, `auth`, `errorMask`, `logger`. Run the dispatch spike before this phase, since its outcome changes how `publish` works.
+**Phase 2, the runner.** The `requires`/`anyone` wrapper, late-bound middleware composition, `audit`. Ship `context`, `auth`, `errorMask`, `logger`. The dispatch spike (Open Questions, below) must resolve before this phase, since a failure means redesigning the endpoint shape rather than just its implementation.
 
 **Phase 3, adapters.** `@you/rbac/gas` with the session resolver, properties store, and script cache wrapper. Split entry points so the core stays importable in Node and testable without stubbing globals.
 
@@ -229,9 +241,11 @@ Later, if asked for: Admin SDK group store, typed client wrapper, exported `runA
 
 ## Open questions
 
-**Does dynamic global assignment dispatch?** `publish()` assigns handlers to `globalThis` in a loop instead of the source containing literal `function submitInvoice()` declarations. Module top-level runs before dispatch, so it should work, but parts of Apps Script's plumbing are driven by static analysis of source and this is an assumption, not a verified fact. Five minute spike: deploy a scratch web app that assigns one global in a loop and call it from the client.
+**Does dynamic global assignment dispatch?** `rbac.requires(name, perm, handler)` assigns `globalThis[name]` as a side effect of module evaluation, instead of the source containing a literal `function submitInvoice()` declaration. Module top-level runs before dispatch, so it should work, but parts of Apps Script's plumbing are driven by static analysis of source, and this is an assumption, not a verified fact. Five minute spike: deploy a scratch web app that assigns one global (`globalThis.ping = () => 'pong'`) with no static declaration, and call it via `google.script.run` from the client. This is the one open item that gates the entire registration design, not just an implementation detail inside it — a failure means redesigning the endpoint shape before writing any package code, not refactoring around it.
 
-If it fails, the fallback is codegen. A build step reads the route object and emits literal stub functions that delegate to it. Authoring experience is unchanged and there is still one source of truth. Run this spike before phase 2, because it is the only open item that changes an implementation rather than a refactor.
+If it fails, the fallback is codegen. A build step reads the route object and emits literal stub functions that delegate to the wrapped function. Authoring experience is unchanged and there is still one source of truth.
+
+Five more platform assumptions are worth verifying in the same scratch session, since each is cheap and none require separate setup: whether `doGet` resolves a runtime-assigned global the same way (survivable if not — `doGet` is one function per app and can stay a static declaration); whether the bundler preserves a route module's registration side effect under tree shaking (mitigate regardless by keeping `sideEffects: false` out of the manifest and documenting that the entry file must import every route module); whether `globalThis` is actually present in the runtime (fall back to top-level `this` if not); whether a thrown error reaches `withFailureHandler` intact several closures deep, and without leaking the unmasked message (`errorMask` depends on this); and whether the registry detects duplicate route names and still applies a `use()` call that appears after a `requires()` call in import order (validates the late-binding decision above). None of these five gate the architecture the way the dispatch spike does — they gate documentation and error-handling correctness — but they should run before Phase 2 alongside it.
 
 **Should we generate a typed client?** `google.script.run.submitInvoice(data)` is an untyped runtime lookup. Nothing connects it to the handler's signature, so that boundary is genuinely unchecked. Generating an `api` object from the route map would restore type safety and hand back promises instead of `withSuccessHandler` callbacks. Additive, so it can wait, but it is the largest remaining gap.
 
