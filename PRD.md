@@ -281,9 +281,9 @@ This is the phase that finally needed a real build step, since Apps Script only 
 
 The other real find came from actually using the app, not from writing it: `withScriptCache` reintroduces staleness that `createPropertiesStore` alone doesn't have. Phase 3's spike proved a role edit takes effect on the very next call with no redeploy — true for the raw properties store, but that spike never exercised the cached version. Layering `withScriptCache` on top means a role change can take up to `ttlSeconds` (default 300s) to actually apply, since `getRoles` now hits the cache before ever touching `PropertiesService` again. Hit this directly mid-test: granted `admin` after the page had already cached an empty result, and the grant didn't visibly work until the cache entry was cleared. Fixed by adding `invalidateCachedRoles(email)` to `src/gas/cache.ts` — a real function now, not the one-off console snippet used to unblock the test — for wiring into whatever tool an admin uses to change someone's role.
 
-**Phase 5, docs.** The threat model paragraph matters more than the API reference. Four facts a maintainer needs: deployed execute-as-me, identity from `getActiveUser`, every global is a public endpoint, the route gate is the only gate.
+**Phase 5, docs — done.** `README.md`, leading with the threat model paragraph ahead of the API reference, as planned: deployed execute-as-me, identity from `getActiveUser`, every global is a public endpoint, the route gate is the only gate. Covers setup, the full API (`definePolicy`, `init`, `rbac.*`, `__rbacDispatch`, ambient `can`/`require`/`permissionsFor`), middleware and composition order, the typed client, the three-entry-point package layout, `withScriptCache`'s staleness tradeoff, and the esbuild deployment recipe from Phase 4 — pointing to `examples/invoice-app/` and `PRD.md`/`spike-findings.md` for anything deeper.
 
-Later, if asked for: Admin SDK group store, typed client wrapper, exported `runAs`.
+Later, if asked for: Admin SDK group store, exported per-route middleware.
 
 ## Open questions
 
