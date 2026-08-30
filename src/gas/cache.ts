@@ -13,6 +13,10 @@ import type { RoleStore } from '../core/store.js';
 // so a test can pass fakes without stubbing `CacheService`/`Utilities`.
 const DEFAULT_TTL_SECONDS = 300;
 
+function cacheKeyFor(email: string, hash: (input: string) => string): string {
+  return `rbac:roles:${hash(email)}`;
+}
+
 export function withScriptCache(
   store: RoleStore,
   cache: GoogleAppsScript.Cache.Cache = CacheService.getScriptCache(),
@@ -21,7 +25,7 @@ export function withScriptCache(
 ): RoleStore {
   return {
     getRoles(email: string): readonly string[] {
-      const key = `rbac:roles:${hash(email)}`;
+      const key = cacheKeyFor(email, hash);
       const cached = cache.get(key);
       if (cached !== null) {
         return JSON.parse(cached);
@@ -31,6 +35,22 @@ export function withScriptCache(
       return roles;
     },
   };
+}
+
+// Found the hard way (Phase 4, porting the invoice app): granting someone a
+// role through createPropertiesStore takes effect on the very next request
+// with no redeploy needed -- but only if nothing is caching the old result.
+// withScriptCache's whole point is caching that result for up to ttlSeconds,
+// which silently reintroduces the staleness the properties store alone
+// doesn't have. Without this, the only way to force a change through is to
+// hand-compute the same SHA-256 key and call CacheService directly -- worth
+// having as a real function instead of a one-off console snippet.
+export function invalidateCachedRoles(
+  email: string,
+  cache: GoogleAppsScript.Cache.Cache = CacheService.getScriptCache(),
+  hash: (input: string) => string = sha256Hex,
+): void {
+  cache.remove(cacheKeyFor(email, hash));
 }
 
 function sha256Hex(input: string): string {
