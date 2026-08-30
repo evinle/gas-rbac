@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPrincipal, runAs } from './context.js';
+import { getPrincipal, runAs } from '../../runtime/context.js';
 
 describe('runAs / getPrincipal', () => {
   it('makes the principal available to code called inside runAs', () => {

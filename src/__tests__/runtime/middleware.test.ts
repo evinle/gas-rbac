@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compose, type Meta, type Middleware } from './middleware.js';
+import { compose, type Meta, type Middleware } from '../../runtime/middleware.js';
 
 function recorder(name: string, log: string[]): Middleware {
   return (next) => (...args) => {

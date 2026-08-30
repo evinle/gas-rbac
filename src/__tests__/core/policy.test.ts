@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { definePolicy } from './policy.js';
+import { definePolicy } from '../../core/policy.js';
 
 describe('definePolicy', () => {
   it('returns the spec unchanged', () => {

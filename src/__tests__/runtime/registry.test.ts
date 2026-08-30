@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createRegistry } from './registry.js';
-import type { Middleware } from './middleware.js';
+import { createRegistry } from '../../runtime/registry.js';
+import type { Middleware } from '../../runtime/middleware.js';
 
 describe('createRegistry', () => {
   it('dispatches to the registered handler and forwards arguments', () => {

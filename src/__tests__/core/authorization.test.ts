@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { can, permissionsFor, require } from './authorization.js';
-import { AuthorizationError } from './errors.js';
+import { can, permissionsFor, require } from '../../core/authorization.js';
+import { AuthorizationError } from '../../core/errors.js';
 
 describe('can', () => {
   it('is true when the permission is in the set', () => {

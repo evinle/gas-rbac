@@ -2,7 +2,7 @@
 // `tsc --noEmit` fails this file if either line's error goes away --
 // `@ts-expect-error` itself errors when the expected error doesn't happen.
 // Not run by vitest; covered by `npm run typecheck`.
-import { can, require } from './authorization.js';
+import { can, require } from '../../core/authorization.js';
 
 const perms = new Set(['invoice:read', 'invoice:submit'] as const);
 

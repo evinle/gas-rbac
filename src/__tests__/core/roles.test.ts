@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { definePolicy } from './policy.js';
-import { permissionsForRoles, resolvePermissions } from './roles.js';
-import type { RoleStore } from './store.js';
+import { definePolicy } from '../../core/policy.js';
+import { permissionsForRoles, resolvePermissions } from '../../core/roles.js';
+import type { RoleStore } from '../../core/store.js';
 
 const policy = definePolicy({
   permissions: ['invoice:read', 'invoice:submit'],

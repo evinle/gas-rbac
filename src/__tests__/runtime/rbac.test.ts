@@ -3,10 +3,10 @@
 // actually touches. Route names are unique per test since the registry is
 // a module-level singleton, same as it will be in the real deployed script.
 import { afterEach, describe, expect, it } from 'vitest';
-import { __rbacDispatch, can, permissionsFor, rbac, require } from './rbac.js';
-import { __resetConfigForTests, init } from './config.js';
-import { definePolicy } from '../core/policy.js';
-import type { RoleStore } from '../core/store.js';
+import { __rbacDispatch, can, permissionsFor, rbac, require } from '../../runtime/rbac.js';
+import { __resetConfigForTests, init } from '../../runtime/config.js';
+import { definePolicy } from '../../core/policy.js';
+import type { RoleStore } from '../../core/store.js';
 
 const policy = definePolicy({
   permissions: ['invoice:read', 'invoice:submit'],
