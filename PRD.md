@@ -49,9 +49,9 @@ Bundling into the consumer's project sidesteps all of it. Their `PropertiesServi
 
 These two halves of a policy change at completely different rates and deserve different homes.
 
-Role to permission mappings change a few times a year and are security critical. They belong in a `Policy.ts` file: git history, code review, atomic deployment with the code that depends on them, and no runtime read. Script Properties give none of that. Anyone with edit access to the project could rewrite the permission model from the editor with no trace.
+Role to permission mappings change a few times a year and are security critical. They belong in a `Policy.ts` file: git history, code review, atomic deployment with the code that depends on them, and no runtime read. A runtime-editable store gives none of that. Anyone with edit access could rewrite the permission model with no trace.
 
-Assignments of people to roles change weekly and are boring. Those go in an injected store, default Script Properties, shaped `{"alice@org.com": ["admin"]}`.
+Assignments of people to roles change weekly and are boring. Those go in an injected store behind one interface, `RoleStore` — `getRoles(email): readonly string[]`, nothing else. The library only ever calls that one method; it has no idea and no opinion where the data actually lives. Script Properties (`src/gas/properties-store.ts`) is the one reference implementation this package ships, shaped `{"alice@org.com": ["admin"]}`, because it needs zero setup beyond the editor already open. It is not the contract. A Google Sheet, BigQuery, or an AWS-hosted role service are equally valid `RoleStore` implementations, written and owned by whichever app needs them — that adapter is the consuming app's responsibility, not this package's, the same way `createPropertiesStore` and `withScriptCache` live in the `./gas` entry point and not in `core/` or `runtime/`.
 
 One Apps Script constraint worth recording: projects only accept `.gs`, `.html`, and `appsscript.json` files, so "JSON in code" means a frozen object literal in a `.ts` file that compiles into the bundle.
 
