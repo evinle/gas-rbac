@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test:all": "npm run test && npm run typecheck",
     "demo": "tsx examples/invoice-app/demo.ts",
-    "demo:phase2": "tsx examples/invoice-app/phase2-demo.ts"
+    "demo:phase2": "tsx examples/invoice-app/phase2-demo.ts",
+    "build:invoice-app": "node examples/invoice-app/build.js"
   },
   "devDependencies": {
     "@types/google-apps-script": "^2.0.12",
