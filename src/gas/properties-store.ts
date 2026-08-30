@@ -9,7 +9,10 @@ export const ROLE_ASSIGNMENTS_PROPERTY_KEY = 'RBAC_ROLE_ASSIGNMENTS';
 
 // `properties` defaults to the real global but is a parameter so a test can
 // pass a fake without stubbing `PropertiesService` itself.
-export function createPropertiesStore(
+//
+// Trailing underscore: GAS's own convention for "not a public endpoint" --
+// see README "GAS naming convention". Not a route.
+export function createPropertiesStore_(
   properties: GoogleAppsScript.Properties.Properties = PropertiesService.getScriptProperties(),
 ): RoleStore {
   return {

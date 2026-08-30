@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { definePolicy } from '../../core/policy.js';
-import { permissionsForRoles, resolvePermissions } from '../../core/roles.js';
+import { definePolicy_ } from '../../core/policy.js';
+import { permissionsForRoles_, resolvePermissions_ } from '../../core/roles.js';
 import type { RoleStore } from '../../core/store.js';
 
-const policy = definePolicy({
+const policy = definePolicy_({
   permissions: ['invoice:read', 'invoice:submit'],
   roles: {
     member: ['invoice:submit'],
@@ -19,31 +19,31 @@ class FakeStore implements RoleStore {
   }
 }
 
-describe('permissionsForRoles', () => {
+describe('permissionsForRoles_', () => {
   it('grants defaultRoles even with no explicit roles', () => {
-    const perms = permissionsForRoles(policy, []);
+    const perms = permissionsForRoles_(policy, []);
     expect(perms).toEqual(new Set(['invoice:submit']));
   });
 
   it('unions defaultRoles with explicit roles', () => {
-    const perms = permissionsForRoles(policy, ['admin']);
+    const perms = permissionsForRoles_(policy, ['admin']);
     expect(perms).toEqual(new Set(['invoice:submit', 'invoice:read']));
   });
 
   it('ignores a role name the policy does not recognize', () => {
-    const perms = permissionsForRoles(policy, ['made-up-role']);
+    const perms = permissionsForRoles_(policy, ['made-up-role']);
     expect(perms).toEqual(new Set(['invoice:submit']));
   });
 });
 
-describe('resolvePermissions', () => {
+describe('resolvePermissions_', () => {
   it('resolves through the store, falling back to defaultRoles when unassigned', () => {
     const store = new FakeStore({ 'admin@org.com': ['admin'] });
 
-    expect(resolvePermissions(policy, store, 'admin@org.com')).toEqual(
+    expect(resolvePermissions_(policy, store, 'admin@org.com')).toEqual(
       new Set(['invoice:submit', 'invoice:read']),
     );
-    expect(resolvePermissions(policy, store, 'nobody@org.com')).toEqual(
+    expect(resolvePermissions_(policy, store, 'nobody@org.com')).toEqual(
       new Set(['invoice:submit']),
     );
   });

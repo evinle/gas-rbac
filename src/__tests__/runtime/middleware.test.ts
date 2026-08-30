@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compose, type Meta, type Middleware } from '../../runtime/middleware.js';
+import { compose_, type Meta, type Middleware } from '../../runtime/middleware.js';
 
 function recorder(name: string, log: string[]): Middleware {
   return (next) => (...args) => {
@@ -10,7 +10,7 @@ function recorder(name: string, log: string[]): Middleware {
   };
 }
 
-describe('compose', () => {
+describe('compose_', () => {
   it('runs middlewares outermost-first, innermost-last, then the handler', () => {
     const log: string[] = [];
     const meta: Meta = { name: 'test', perm: null };
@@ -19,7 +19,7 @@ describe('compose', () => {
       return 'result';
     };
 
-    const composed = compose([recorder('a', log), recorder('b', log)], handler, meta);
+    const composed = compose_([recorder('a', log), recorder('b', log)], handler, meta);
     const result = composed();
 
     expect(result).toBe('result');
@@ -29,7 +29,7 @@ describe('compose', () => {
   it('forwards arguments through to the handler', () => {
     const meta: Meta = { name: 'echo', perm: null };
     const handler = (msg: string) => `echo:${msg}`;
-    const composed = compose([], handler, meta);
+    const composed = compose_([], handler, meta);
     expect(composed('hi')).toBe('echo:hi');
   });
 
@@ -44,7 +44,7 @@ describe('compose', () => {
       return `${result}:${m.principalEmail}`;
     };
 
-    const composed = compose([reader, setter], () => 'handler', meta);
+    const composed = compose_([reader, setter], () => 'handler', meta);
     expect(composed()).toBe('handler:alice@org.com');
   });
 });

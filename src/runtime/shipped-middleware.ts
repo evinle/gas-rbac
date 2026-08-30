@@ -1,9 +1,9 @@
 import { AuthorizationError } from '../core/errors.js';
-import { require as requirePerm } from '../core/authorization.js';
-import { runAs } from './context.js';
-import { getConfig } from './config.js';
+import { require_ as requirePerm } from '../core/authorization.js';
+import { runAs_ } from './context.js';
+import { getConfig_ } from './config.js';
 import type { Middleware } from './middleware.js';
-import { resolvePermissions } from '../core/roles.js';
+import { resolvePermissions_ } from '../core/roles.js';
 
 // Composition order (outermost first): errorMask wraps logger wraps context
 // wraps auth wraps the handler -- see PRD.md "Composition order". context
@@ -15,21 +15,21 @@ import { resolvePermissions } from '../core/roles.js';
 // (installing a `system` principal, or refusing) is Phase 3: the resolver
 // injected via init() only models an interactive web app request for now.
 export const context: Middleware = (next, meta) => (...args) => {
-  const email = getConfig().resolver();
+  const email = getConfig_().resolver();
   if (!email) {
     throw new Error('context: no active user (failing closed)');
   }
   meta.principalEmail = email;
-  return runAs({ email }, () => next(...args));
+  return runAs_({ email }, () => next(...args));
 };
 
 export const auth: Middleware = (next, meta) => (...args) => {
   if (meta.perm !== null) {
-    const { policy, store } = getConfig();
+    const { policy, store } = getConfig_();
     // context() has already run and set the ambient principal by the time
     // auth() runs, since auth is innermost of the two.
     const email = meta.principalEmail!;
-    const perms = resolvePermissions(policy, store, email);
+    const perms = resolvePermissions_(policy, store, email);
     requirePerm(perms, meta.perm);
   }
   return next(...args);
@@ -57,7 +57,7 @@ export const errorMask: Middleware = (next) => (...args) => {
 // broken UI, occasionally something else.
 export const logger: Middleware = (next, meta) => (...args) => {
   const start = Date.now();
-  const log = getConfig().logger ?? defaultLog;
+  const log = getConfig_().logger ?? defaultLog_;
   try {
     const result = next(...args);
     log({ route: meta.name, principal: meta.principalEmail ?? null, allowed: true, durationMs: Date.now() - start });
@@ -68,6 +68,8 @@ export const logger: Middleware = (next, meta) => (...args) => {
   }
 };
 
-function defaultLog(event: import('./config.js').LogEvent): void {
+// Trailing underscore: GAS's own convention for "not a public endpoint" --
+// see README "GAS naming convention". Not a route.
+function defaultLog_(event: import('./config.js').LogEvent): void {
   console.log(JSON.stringify(event));
 }

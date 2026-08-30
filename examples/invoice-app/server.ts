@@ -3,16 +3,21 @@
 // bundles into dist/Code.js (see build.js for why cjs format + a stripped
 // module.exports line is what makes the output survive as real Apps
 // Script globals).
-import { __rbacDispatch, init, permissionsFor, rbac } from '../../src/index.js';
-import { createPropertiesStore, createSessionResolver, withScriptCache } from '../../src/gas/index.js';
-import { policy } from './policy.js';
+import { __rbacDispatch, init_, permissionsFor_, rbac as rbacUntyped, typedRbac_ } from '../../src/index.js';
+import { createPropertiesStore_, createSessionResolver_, withScriptCache_ } from '../../src/gas/index.js';
+import { policy, type Perm } from './policy.js';
 
-init({
+init_({
   policy,
-  store: withScriptCache(createPropertiesStore()),
-  resolver: createSessionResolver(),
+  store: withScriptCache_(createPropertiesStore_()),
+  resolver: createSessionResolver_(),
   logger: (event) => console.log(JSON.stringify(event)),
 });
+
+// Re-types the ambient singleton against this app's own policy, so a
+// typo'd permission string below (e.g. 'invoice:raed') fails the build --
+// see PRD.md/README "threading Perm through requires and middleware".
+const rbac = typedRbac_<Perm>(rbacUntyped);
 
 // In-memory "repository" -- resets every cold start, same as every other
 // piece of Apps Script state that isn't PropertiesService or a real
@@ -34,10 +39,10 @@ rbac.requires('approveInvoice', 'invoice:approve', (id: string) => {
   return invoice;
 });
 
-// Cosmetic only -- see PRD.md "permissionsFor is the one people will use.
+// Cosmetic only -- see PRD.md "permissionsFor_ is the one people will use.
 // It feeds the HTML template so members do not see an invoice table they
 // cannot load." The route gate above is the real control.
-rbac.anyone('whoAmI', () => ({ perms: [...permissionsFor()] }));
+rbac.anyone('whoAmI', () => ({ perms: [...permissionsFor_()] }));
 
 // doGet is not registered through rbac.anyone -- Apps Script calls it
 // directly by name (spike #5, issue #5: confirmed it resolves fine either

@@ -14,7 +14,12 @@ export interface PolicySpec<
 // (rather than unifying a separate RoleName parameter against a `Record`),
 // which is what lets more than one role key through the same call.
 // Requires the caller to pass an `as const` literal.
-export function definePolicy<
+// Trailing underscore: GAS's own convention for "not a public endpoint" --
+// see README "GAS naming convention". Every top-level `function` in the
+// dependency graph a bundler flattens into the deployed .gs file is
+// otherwise reachable as `google.script.run.definePolicy_(...)`; this is
+// a build-time helper, never something a browser should be able to call.
+export function definePolicy_<
   Permission extends string,
   Roles extends Record<string, readonly Permission[]>,
 >(spec: PolicySpec<Permission, Roles>): PolicySpec<Permission, Roles> {

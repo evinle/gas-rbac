@@ -1,6 +1,6 @@
 // No AsyncLocalStorage: Apps Script is single-threaded with no real event
 // loop, so a module-level variable can't be corrupted by interleaving.
-// runAs() sets it and restores the previous value in a finally -- see
+// runAs_() sets it and restores the previous value in a finally -- see
 // PRD.md "Ambient context".
 export interface Principal {
   email: string;
@@ -8,7 +8,9 @@ export interface Principal {
 
 let current: Principal | null = null;
 
-export function runAs<T>(principal: Principal, fn: () => T): T {
+// Trailing underscore on both: GAS's own convention for "not a public
+// endpoint" -- see README "GAS naming convention". Neither is a route.
+export function runAs_<T>(principal: Principal, fn: () => T): T {
   const previous = current;
   current = principal;
   try {
@@ -19,12 +21,12 @@ export function runAs<T>(principal: Principal, fn: () => T): T {
 }
 
 // Internal: handlers and shipped middleware read the principal this way.
-// Throws rather than returning null, since reading it outside of runAs() is
+// Throws rather than returning null, since reading it outside of runAs_() is
 // a programmer error (a middleware ordering bug), not a runtime condition
 // callers should be routed to handle.
-export function getPrincipal(): Principal {
+export function getPrincipal_(): Principal {
   if (!current) {
-    throw new Error('getPrincipal() called outside runAs() -- context() middleware must run first');
+    throw new Error('getPrincipal_() called outside runAs_() -- context() middleware must run first');
   }
   return current;
 }

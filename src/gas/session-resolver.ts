@@ -7,7 +7,10 @@
 // `session` defaults to the real global but is a parameter so a test can
 // pass a fake without stubbing `Session` itself -- see PRD.md Phase 3
 // "testable without stubbing globals".
-export function createSessionResolver(session: GoogleAppsScript.Base.Session = Session): () => string | null {
+//
+// Trailing underscore: GAS's own convention for "not a public endpoint" --
+// see README "GAS naming convention". Not a route.
+export function createSessionResolver_(session: GoogleAppsScript.Base.Session = Session): () => string | null {
   return () => {
     const email = session.getActiveUser().getEmail();
     return email === '' ? null : email;

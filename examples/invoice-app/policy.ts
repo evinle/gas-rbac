@@ -1,9 +1,9 @@
-import { definePolicy, type PermissionOf } from '../../src/index.js';
+import { definePolicy_, type PermissionOf } from '../../src/index.js';
 
 // This is the file PRD.md means by "Role definitions in code": committed,
 // reviewed in a pull request, no runtime read. Compare policy.ts's shape here
 // with roles.ts's shape below -- assignments live somewhere else entirely.
-export const policy = definePolicy({
+export const policy = definePolicy_({
   permissions: ['invoice:read', 'invoice:submit', 'invoice:approve'],
   roles: {
     member: ['invoice:submit'],

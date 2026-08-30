@@ -21,23 +21,27 @@ export interface Config {
 }
 
 // Read at dispatch time, not composition time, same as the middleware chain
-// itself -- so calling init() again (e.g. in a test between cases) takes
+// itself -- so calling init_() again (e.g. in a test between cases) takes
 // effect on the next dispatch, not just the next module evaluation.
 let config: Config | null = null;
 
-export function init(c: Config): void {
+// Trailing underscore on both: GAS's own convention for "not a public
+// endpoint" -- see README "GAS naming convention". Neither is a route.
+export function init_(c: Config): void {
   config = c;
 }
 
-export function getConfig(): Config {
+export function getConfig_(): Config {
   if (!config) {
-    throw new Error('rbac.init() must be called before any route dispatches');
+    throw new Error('rbac.init_() must be called before any route dispatches');
   }
   return config;
 }
 
 // Test-only escape hatch -- there is no other way to unset module state
-// between test cases without it.
-export function __resetConfigForTests(): void {
+// between test cases without it. Keeps its leading "__" as the existing
+// internal-marker convention, and gains the trailing "_" too since it's
+// exactly as unfit for google.script.run exposure as everything else here.
+export function __resetConfigForTests_(): void {
   config = null;
 }

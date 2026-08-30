@@ -1,35 +1,35 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createRegistry } from '../../runtime/registry.js';
+import { createRegistry_ } from '../../runtime/registry.js';
 import type { Middleware } from '../../runtime/middleware.js';
 
-describe('createRegistry', () => {
+describe('createRegistry_', () => {
   it('dispatches to the registered handler and forwards arguments', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     registry.anyone('echo', (msg: string) => `echo:${msg}`);
     expect(registry.dispatch('echo', ['hi'])).toBe('echo:hi');
   });
 
   it('throws on dispatch to an unregistered name', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     expect(() => registry.dispatch('nope', [])).toThrow(/no such route: nope/);
   });
 
   it('lets a duplicate registration silently shadow the first, not throw immediately', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     registry.anyone('ping', () => 'first');
     expect(() => registry.anyone('ping', () => 'second')).not.toThrow();
     expect(registry.dispatch('ping', [])).toBe('second');
   });
 
   it('audit() throws in development when a duplicate was registered', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     registry.anyone('ping', () => 'first');
     registry.anyone('ping', () => 'second');
     expect(() => registry.audit({ environment: 'development' })).toThrow(/duplicate route registration: "ping"/);
   });
 
   it('audit() logs instead of throwing in production', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     registry.anyone('ping', () => 'first');
     registry.anyone('ping', () => 'second');
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -39,19 +39,19 @@ describe('createRegistry', () => {
   });
 
   it('audit() throws on a route name that collides with a reserved client method', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     registry.anyone('withSuccessHandler', () => 'oops');
     expect(() => registry.audit()).toThrow(/reserved client method name/);
   });
 
   it('audit() passes clean when there is nothing to report', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     registry.anyone('ping', () => 'pong');
     expect(() => registry.audit()).not.toThrow();
   });
 
   it('applies a use() call registered after the route it wraps, since composition is late-bound', () => {
-    const registry = createRegistry([]);
+    const registry = createRegistry_([]);
     registry.anyone('echo', (msg: string) => `echo:${msg}`);
 
     const upper: Middleware = (next) => (...args) => String(next(...args)).toUpperCase();
@@ -75,7 +75,7 @@ describe('createRegistry', () => {
       return r;
     };
 
-    const registry = createRegistry([shipped]);
+    const registry = createRegistry_([shipped]);
     registry.anyone('ping', () => {
       log.push('handler');
       return 'pong';

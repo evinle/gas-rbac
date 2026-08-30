@@ -2,9 +2,9 @@
 // and middleware -- everything demo.ts doesn't cover, since that one only
 // exercises Phase 1's explicit-argument primitives. Run with:
 //   npx tsx examples/invoice-app/phase2-demo.ts
-import { __rbacDispatch, can, init, permissionsFor, rbac, require } from '../../src/index.js';
+import { __rbacDispatch, can_, init_, permissionsFor_, rbac, require_ } from '../../src/index.js';
 import type { Middleware } from '../../src/index.js';
-import { createRegistry } from '../../src/runtime/registry.js';
+import { createRegistry_ } from '../../src/runtime/registry.js';
 import { policy } from './policy.js';
 import { roleStore } from './store.js';
 
@@ -24,15 +24,15 @@ rbac.anyone('ping', () => 'pong');
 rbac.requires('listInvoices', 'invoice:read', () => invoices);
 rbac.requires('approveInvoice', 'invoice:approve', (id: string) => `approved ${id}`);
 // Secondary in-handler checks, not the route gate itself -- see PRD.md
-// "can and require cover secondary checks, like an admin-only field on an
+// "can_ and require_ cover secondary checks, like an admin-only field on an
 // otherwise open endpoint."
 rbac.anyone('invoiceSummary', () => {
   const base = `${invoices.length} invoice(s) on file`;
-  return can('invoice:approve') ? `${base} (approver view)` : base;
+  return can_('invoice:approve') ? `${base} (approver view)` : base;
 });
 rbac.anyone('whoAmI', () => {
-  require('invoice:read'); // throws AuthorizationError if the caller lacks it, masked on the way out
-  return { perms: [...permissionsFor()] };
+  require_('invoice:read'); // throws AuthorizationError if the caller lacks it, masked on the way out
+  return { perms: [...permissionsFor_()] };
 });
 
 section('use(): a custom middleware, applied even though it is registered after every route above');
@@ -43,7 +43,7 @@ const countCalls: Middleware = (next, meta) => (...args) => {
 };
 rbac.use(countCalls);
 
-init({
+init_({
   policy,
   store: roleStore,
   resolver: () => activeUser,
@@ -63,11 +63,11 @@ try {
   console.log('carol denied ->', (e as Error).message); // "request denied", not "carol lacks invoice:approve"
 }
 
-section('ambient can()/require()/permissionsFor() read whichever principal is dispatching right now');
+section('ambient can_()/require_()/permissionsFor_() read whichever principal is dispatching right now');
 activeUser = 'carol@org.com';
 console.log('carol summary ->', __rbacDispatch('invoiceSummary'));
 try {
-  __rbacDispatch('whoAmI'); // carol has no invoice:read -- require() throws, errorMask masks it
+  __rbacDispatch('whoAmI'); // carol has no invoice:read -- require_() throws, errorMask masks it
 } catch (e) {
   console.log('carol whoAmI ->', (e as Error).message);
 }
@@ -80,7 +80,7 @@ section('use() middleware applied to every dispatch above, including ones regist
 console.log('call counts ->', Object.fromEntries(callCounts));
 
 section('audit(): a route colliding with a reserved client method name');
-const scratchRegistry = createRegistry([]);
+const scratchRegistry = createRegistry_([]);
 scratchRegistry.anyone('withSuccessHandler', () => 'this would silently never dispatch from the browser');
 try {
   scratchRegistry.audit();

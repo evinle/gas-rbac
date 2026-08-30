@@ -1,10 +1,13 @@
 import type { PermissionOf, PolicySpec } from './policy.js';
 import type { RoleStore } from './store.js';
 
+// Trailing underscore on both: GAS's own convention for "not a public
+// endpoint" -- see README "GAS naming convention". Neither is a route.
+
 // An email always carries `defaultRoles` in addition to whatever the store
 // assigns, so a store with no entry for someone still resolves to the floor
 // grant rather than nothing -- see PRD.md's note on `defaultRoles`.
-export function permissionsForRoles<Policy extends PolicySpec<any, any>>(
+export function permissionsForRoles_<Policy extends PolicySpec<any, any>>(
   policy: Policy,
   roleNames: readonly string[],
 ): Set<PermissionOf<Policy>> {
@@ -21,10 +24,10 @@ export function permissionsForRoles<Policy extends PolicySpec<any, any>>(
   return result;
 }
 
-export function resolvePermissions<Policy extends PolicySpec<any, any>>(
+export function resolvePermissions_<Policy extends PolicySpec<any, any>>(
   policy: Policy,
   store: RoleStore,
   email: string,
 ): Set<PermissionOf<Policy>> {
-  return permissionsForRoles(policy, store.getRoles(email));
+  return permissionsForRoles_(policy, store.getRoles(email));
 }

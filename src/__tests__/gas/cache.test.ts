@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { invalidateCachedRoles, withScriptCache } from '../../gas/cache.js';
+import { invalidateCachedRoles_, withScriptCache_ } from '../../gas/cache.js';
 import type { RoleStore } from '../../core/store.js';
 
 function fakeCache(): GoogleAppsScript.Cache.Cache {
@@ -17,10 +17,10 @@ function fakeCache(): GoogleAppsScript.Cache.Cache {
 
 const noopHash = (input: string) => `hash:${input}`;
 
-describe('withScriptCache', () => {
+describe('withScriptCache_', () => {
   it('returns the underlying store result on a cache miss', () => {
     const store: RoleStore = { getRoles: () => ['admin'] };
-    const cached = withScriptCache(store, fakeCache(), noopHash);
+    const cached = withScriptCache_(store, fakeCache(), noopHash);
     expect(cached.getRoles('alice@org.com')).toEqual(['admin']);
   });
 
@@ -28,7 +28,7 @@ describe('withScriptCache', () => {
     const getRoles = vi.fn().mockReturnValue(['admin']);
     const store: RoleStore = { getRoles };
     const cache = fakeCache();
-    const cached = withScriptCache(store, cache, noopHash);
+    const cached = withScriptCache_(store, cache, noopHash);
 
     cached.getRoles('alice@org.com');
     cached.getRoles('alice@org.com');
@@ -41,7 +41,7 @@ describe('withScriptCache', () => {
     const putSpy = vi.fn();
     const cache = { get: () => null, put: putSpy } as unknown as GoogleAppsScript.Cache.Cache;
 
-    withScriptCache(store, cache, noopHash).getRoles('alice@org.com');
+    withScriptCache_(store, cache, noopHash).getRoles('alice@org.com');
 
     expect(putSpy).toHaveBeenCalledWith(expect.stringContaining('hash:alice@org.com'), expect.any(String), expect.any(Number));
   });
@@ -51,34 +51,34 @@ describe('withScriptCache', () => {
     const store: RoleStore = {
       getRoles: (email) => (email === 'alice@org.com' ? ['admin'] : ['member']),
     };
-    const cached = withScriptCache(store, cache, noopHash);
+    const cached = withScriptCache_(store, cache, noopHash);
 
     expect(cached.getRoles('alice@org.com')).toEqual(['admin']);
     expect(cached.getRoles('bob@org.com')).toEqual(['member']);
   });
 });
 
-describe('invalidateCachedRoles', () => {
+describe('invalidateCachedRoles_', () => {
   it('forces the next getRoles call to go back to the underlying store', () => {
     const getRoles = vi.fn().mockReturnValue(['admin']);
     const store: RoleStore = { getRoles };
     const cache = fakeCache();
-    const cached = withScriptCache(store, cache, noopHash);
+    const cached = withScriptCache_(store, cache, noopHash);
 
     cached.getRoles('alice@org.com'); // cache miss, calls the store, caches the result
     cached.getRoles('alice@org.com'); // cache hit, does not call the store again
     expect(getRoles).toHaveBeenCalledTimes(1);
 
-    invalidateCachedRoles('alice@org.com', cache, noopHash);
+    invalidateCachedRoles_('alice@org.com', cache, noopHash);
 
     cached.getRoles('alice@org.com'); // cache miss again after invalidation
     expect(getRoles).toHaveBeenCalledTimes(2);
   });
 
-  it('uses the same key derivation as withScriptCache, so it invalidates the right entry', () => {
+  it('uses the same key derivation as withScriptCache_, so it invalidates the right entry', () => {
     const cache = fakeCache();
     const removeSpy = vi.spyOn(cache, 'remove');
-    invalidateCachedRoles('alice@org.com', cache, noopHash);
+    invalidateCachedRoles_('alice@org.com', cache, noopHash);
     expect(removeSpy).toHaveBeenCalledWith(expect.stringContaining('hash:alice@org.com'));
   });
 });

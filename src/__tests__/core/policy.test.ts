@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { definePolicy } from '../../core/policy.js';
+import { definePolicy_ } from '../../core/policy.js';
 
-describe('definePolicy', () => {
+describe('definePolicy_', () => {
   it('returns the spec unchanged', () => {
     const spec = {
       permissions: ['invoice:read'],
@@ -9,6 +9,6 @@ describe('definePolicy', () => {
       defaultRoles: [],
     } as const;
 
-    expect(definePolicy(spec)).toBe(spec);
+    expect(definePolicy_(spec)).toBe(spec);
   });
 });
