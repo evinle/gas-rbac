@@ -88,5 +88,5 @@ Branch: `spike/single-dispatch-issue-11`.
 ## What's left
 
 - **Issue #3 (grant durability — does `drive.file` survive re-auth or ownership transfer)** is still open. Different in kind from the spikes above: it's a long-horizon observational question, not something a quick prototype settles.
-- **Issue #4 (typed client: generate now or defer)** is still open, `wayfinder:grilling`. Now explicitly non-load-bearing per the PRD update — if a typed client generator is skipped or never runs, the cost is weaker autocomplete, not a broken app, since `__rbacDispatch` is what actually has to work at runtime.
-- The scratch Apps Script projects created for these spikes (dispatch, codegen, single-dispatch, doGet, globalThis) are all still live in Google Drive/Apps Script and have not been deleted — `clasp` lacks the Drive scope to delete them programmatically, so they need manual cleanup.
+- **Issue #4 (typed client: generate now or defer)** — decided: defer. Moved from `wayfinder:grilling` to `wayfinder:task`. Non-load-bearing either way — if a typed client generator is skipped or never runs, the cost is weaker autocomplete, not a broken app, since `__rbacDispatch` is what actually has to work at runtime.
+- All six scratch Apps Script projects created across these spikes (dispatch, codegen, single-dispatch, doGet, globalThis, phase3-adapters) have been manually cleaned up. `clasp` never had the Drive scope to delete them programmatically, so each one was removed by hand.
