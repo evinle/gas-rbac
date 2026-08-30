@@ -14,6 +14,7 @@ import path from 'node:path';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const outfile = path.join(dir, 'dist', 'Code.js');
+const clientOutfile = path.join(dir, 'dist', 'Client.js');
 
 mkdirSync(path.join(dir, 'dist'), { recursive: true });
 
@@ -32,7 +33,23 @@ const stripped = bundled
   .join('\n');
 writeFileSync(outfile, stripped);
 
-copyFileSync(path.join(dir, 'appsscript.json'), path.join(dir, 'dist', 'appsscript.json'));
-copyFileSync(path.join(dir, 'web.html'), path.join(dir, 'dist', 'web.html'));
+// client.ts is browser code (runs inside the HTML service page, not the
+// Apps Script server), so it gets esbuild's default iife format instead
+// of server.ts's cjs -- there's no `module`/`exports` global to strip
+// here, and there's nothing to keep flat at the top level for
+// google.script.run to find, unlike server.ts's doGet/__rbacDispatch.
+await build({
+  entryPoints: [path.join(dir, 'client.ts')],
+  bundle: true,
+  format: 'iife',
+  outfile: clientOutfile,
+  platform: 'browser',
+});
 
-console.log(`built ${outfile}`);
+const clientBundle = readFileSync(clientOutfile, 'utf8');
+const webHtml = readFileSync(path.join(dir, 'web.html'), 'utf8').replace('/* CLIENT_BUNDLE */', clientBundle);
+writeFileSync(path.join(dir, 'dist', 'web.html'), webHtml);
+
+copyFileSync(path.join(dir, 'appsscript.json'), path.join(dir, 'dist', 'appsscript.json'));
+
+console.log(`built ${outfile} and inlined ${clientOutfile} into dist/web.html`);

@@ -20,51 +20,8 @@
       <div id="approveResult"></div>
     </div>
 
-    <script>
-      function dispatch(name, ...args) {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .__rbacDispatch(name, ...args);
-        });
-      }
-
-      function renderInvoices(invoices) {
-        document.getElementById('invoiceRows').innerHTML = invoices
-          .map((inv) => `<tr><td>${inv.id}</td><td>${inv.amount}</td></tr>`)
-          .join('');
-      }
-
-      // permissionsFor() drives what's shown -- cosmetic only, the real gate
-      // is the permission check inside approveInvoice's own route.
-      dispatch('whoAmI').then((r) => {
-        if (r.perms.includes('invoice:approve')) {
-          document.getElementById('approveSection').style.display = 'block';
-        }
-      });
-
-      dispatch('listInvoices')
-        .then(renderInvoices)
-        .catch((e) => (document.getElementById('invoiceRows').innerHTML = `<tr><td colspan="2">${e.message}</td></tr>`));
-
-      function submitInvoice() {
-        const amount = Number(document.getElementById('amount').value);
-        dispatch('submitInvoice', amount)
-          .then((inv) => {
-            document.getElementById('submitResult').textContent = `submitted ${inv.id}`;
-            return dispatch('listInvoices');
-          })
-          .then(renderInvoices)
-          .catch((e) => (document.getElementById('submitResult').textContent = e.message));
-      }
-
-      function approveInvoice() {
-        const id = document.getElementById('approveId').value;
-        dispatch('approveInvoice', id)
-          .then((inv) => (document.getElementById('approveResult').textContent = `approved ${inv.id}`))
-          .catch((e) => (document.getElementById('approveResult').textContent = e.message));
-      }
-    </script>
+    <!-- build.js inlines dist/Client.js (bundled from client.ts, which
+         goes through src/client/typedRun) here in place of this comment. -->
+    <script>/* CLIENT_BUNDLE */</script>
   </body>
 </html>
