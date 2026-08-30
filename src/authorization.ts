@@ -6,11 +6,17 @@ import { AuthorizationError } from './errors.js';
 // are a thin Phase 2 wrapper that resolves the current principal's set via
 // `runAs`'s ambient context and closes over it -- see PRD.md "Ambient context".
 
-export function can<Perm extends string>(perms: ReadonlySet<Perm>, perm: Perm): boolean {
+// `NoInfer` on `perm` matters: without it, TypeScript infers `Perm` from
+// *both* arguments and unions the two literal types together rather than
+// checking one against the other, so a typo'd permission would silently
+// widen the type instead of failing the build -- the exact bug this
+// package exists to prevent. `NoInfer` pins `Perm` to whatever `perms`
+// already is and makes `perm` a real check against it.
+export function can<Perm extends string>(perms: ReadonlySet<Perm>, perm: NoInfer<Perm>): boolean {
   return perms.has(perm);
 }
 
-export function require<Perm extends string>(perms: ReadonlySet<Perm>, perm: Perm): void {
+export function require<Perm extends string>(perms: ReadonlySet<Perm>, perm: NoInfer<Perm>): void {
   if (!perms.has(perm)) throw new AuthorizationError(perm);
 }
 
