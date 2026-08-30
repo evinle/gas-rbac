@@ -125,8 +125,16 @@ Two enforcement points also raises the question of which one is load-bearing, an
 
 ```ts
 definePolicy(spec)  // returns a typed policy object
-init({ policy, store, resolver, cache, logger? })
+init({ policy, store, resolver, logger? })
 ```
+
+No separate `cache` field, unlike the signature this section originally sketched. Caching turned out not to need its own slot in `init()` at all: `withScriptCache(store)` (Phase 3, `src/gas/cache.ts`) is a `RoleStore` decorator, not a distinct config concern, so it composes at the call site instead —
+
+```ts
+init({ policy, store: withScriptCache(createPropertiesStore()), resolver: createSessionResolver() });
+```
+
+— which keeps `init()` itself ignorant of caching entirely, consistent with `RoleStore` already being the one pluggable seam for role data.
 
 ### Registration
 
@@ -249,9 +257,11 @@ The rebuild itself is close to free. Constructing an object and composing closur
 
 **Phase 1, core — done.** `definePolicy`, `PermissionOf`, role resolution, the store interface, and explicit-argument `can`/`require`/`permissionsFor` (`src/policy.ts`, `src/roles.ts`, `src/authorization.ts`). Pure TypeScript, no Apps Script references, tested with vitest against a fake store. Walkthrough: `examples/invoice-app/demo.ts`.
 
-Building it surfaced a real bug worth recording: `can`/`require` were originally generic over `Perm` inferred from *both* arguments, so TypeScript unioned a typo'd permission into the inferred type instead of rejecting it, silently defeating the "a typo fails the build" goal. Fixed with `NoInfer<Perm>` on the `perm` parameter, and locked in with a `@ts-expect-error`-based type-test file (`src/authorization.type-test.ts`) since vitest doesn't type-check.
+Building it surfaced a real bug worth recording: `can`/`require` were originally generic over `Perm` inferred from *both* arguments, so TypeScript unioned a typo'd permission into the inferred type instead of rejecting it, silently defeating the "a typo fails the build" goal. Fixed with `NoInfer<Perm>` on the `perm` parameter, and locked in with a `@ts-expect-error`-based type-test file (`src/__tests__/core/authorization.type-test.ts`) since vitest doesn't type-check.
 
-**Phase 2, the runner — done.** The `requires`/`anyone` wrapper, late-bound middleware composition, `audit`, ambient context (`runAs`/`getPrincipal`), the ambient `can`/`require`/`permissionsFor` a route handler actually calls, and the single static `__rbacDispatch` entry point (`src/registry.ts`, `src/context.ts`, `src/middleware.ts`, `src/shipped-middleware.ts`, `src/rbac.ts`). Ships `context`, `auth`, `errorMask`, `logger`. Walkthrough: `examples/invoice-app/phase2-demo.ts`.
+**Phase 2, the runner — done.** The `requires`/`anyone` wrapper, late-bound middleware composition, `audit`, ambient context (`runAs`/`getPrincipal`), the ambient `can`/`require`/`permissionsFor` a route handler actually calls, and the single static `__rbacDispatch` entry point (`src/runtime/registry.ts`, `context.ts`, `middleware.ts`, `shipped-middleware.ts`, `rbac.ts`). Ships `context`, `auth`, `errorMask`, `logger`. Walkthrough: `examples/invoice-app/phase2-demo.ts`.
+
+(`src/core/` and `src/runtime/` is a later reorganization of Phase 1 and Phase 2's files respectively, with tests moved out to `src/__tests__/` mirroring both — no behavior change, just the split this section's own file paths now reflect.)
 
 Three things the build surfaced that the spec above didn't fully account for:
 
@@ -261,7 +271,9 @@ Three things the build surfaced that the spec above didn't fully account for:
 
 Not yet built: per-route middleware (attached before the handler at registration, per "Writing your own" above) — only global `use()` exists so far. Whether `__rbacDispatch` and each `requires()` call actually survive as true top-level globals in a real bundled consumer's output (vs. getting wrapped inside a bundler's module scope) is untested — Phase 3/4's job against a real build, not assumed solved by this existing.
 
-**Phase 3, adapters.** `@you/rbac/gas` with the session resolver, properties store, and script cache wrapper. Split entry points so the core stays importable in Node and testable without stubbing globals.
+**Phase 3, adapters — done.** `src/gas/` (package export `./gas`, kept separate from the root export so importing the core package never pulls in Apps Script globals): `createSessionResolver` (`Session.getActiveUser()`, fails closed to `null` on an empty email), `createPropertiesStore` (the real `RoleStore`, one JSON blob under a single Script Property, degrading to empty rather than throwing on malformed JSON), and `withScriptCache` (a `RoleStore` decorator, not a distinct `init()` field — see Setup, above — keyed on a SHA-256 hash of the email via `Utilities.computeDigest`, never the raw email or `getUserCache()`'s ambiguous per-user partitioning). All three take their real Apps Script dependency (`Session`, `PropertiesService.getScriptProperties()`, `CacheService.getScriptCache()`) as an optional parameter defaulting to the live global, so tests pass a small fake object instead of stubbing the global itself — 11 tests, no Apps Script deployment needed.
+
+Not yet done: none of this has run against a real deployment. Every other platform assumption in this PRD was confirmed by an actual spike before being trusted (`google.script.run`'s dispatch mechanism, `doGet`, tree-shaking, `globalThis`, error propagation) — these three adapters have not had that pass yet, only unit tests against fakes. Phase 4 is where that verification naturally happens, porting a real app forces it, but it should not be treated as already confirmed just because the fakes agree with the type signatures.
 
 **Phase 4, first consumer.** Port the invoice app. Two routes and a template is enough to find the ergonomic problems that a design doc cannot.
 

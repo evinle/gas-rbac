@@ -4,6 +4,10 @@
   "description": "Role-based access control for Google Apps Script web apps",
   "type": "module",
   "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./gas": "./src/gas/index.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -12,6 +16,7 @@
     "demo:phase2": "tsx examples/invoice-app/phase2-demo.ts"
   },
   "devDependencies": {
+    "@types/google-apps-script": "^2.0.12",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
