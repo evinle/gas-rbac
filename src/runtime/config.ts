@@ -1,5 +1,5 @@
-import type { PolicySpec } from './policy.js';
-import type { RoleStore } from './store.js';
+import type { PolicySpec } from '../core/policy.js';
+import type { RoleStore } from '../core/store.js';
 
 export interface LogEvent {
   route: string;

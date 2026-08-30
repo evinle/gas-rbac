@@ -6,9 +6,9 @@
 // only work from inside a dispatched route, which this example doesn't set
 // up. For that walkthrough, see phase2-demo.ts alongside this file. Run with:
 //   npx tsx examples/invoice-app/demo.ts
-import { can, permissionsFor, require } from '../../src/authorization.js';
-import { AuthorizationError } from '../../src/errors.js';
-import { resolvePermissions } from '../../src/roles.js';
+import { can, permissionsFor, require } from '../../src/core/authorization.js';
+import { AuthorizationError } from '../../src/core/errors.js';
+import { resolvePermissions } from '../../src/core/roles.js';
 import { policy } from './policy.js';
 import { roleStore } from './store.js';
 

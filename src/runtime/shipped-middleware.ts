@@ -1,9 +1,9 @@
-import { AuthorizationError } from './errors.js';
-import { require as requirePerm } from './authorization.js';
+import { AuthorizationError } from '../core/errors.js';
+import { require as requirePerm } from '../core/authorization.js';
 import { runAs } from './context.js';
 import { getConfig } from './config.js';
 import type { Middleware } from './middleware.js';
-import { resolvePermissions } from './roles.js';
+import { resolvePermissions } from '../core/roles.js';
 
 // Composition order (outermost first): errorMask wraps logger wraps context
 // wraps auth wraps the handler -- see PRD.md "Composition order". context

@@ -5,8 +5,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { __rbacDispatch, can, permissionsFor, rbac, require } from './rbac.js';
 import { __resetConfigForTests, init } from './config.js';
-import { definePolicy } from './policy.js';
-import type { RoleStore } from './store.js';
+import { definePolicy } from '../core/policy.js';
+import type { RoleStore } from '../core/store.js';
 
 const policy = definePolicy({
   permissions: ['invoice:read', 'invoice:submit'],

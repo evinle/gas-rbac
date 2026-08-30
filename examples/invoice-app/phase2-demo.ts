@@ -4,7 +4,7 @@
 //   npx tsx examples/invoice-app/phase2-demo.ts
 import { __rbacDispatch, can, init, permissionsFor, rbac, require } from '../../src/index.js';
 import type { Middleware } from '../../src/index.js';
-import { createRegistry } from '../../src/registry.js';
+import { createRegistry } from '../../src/runtime/registry.js';
 import { policy } from './policy.js';
 import { roleStore } from './store.js';
 

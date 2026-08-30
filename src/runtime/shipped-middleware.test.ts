@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { __resetConfigForTests, init } from './config.js';
 import { auth, context, errorMask, logger } from './shipped-middleware.js';
 import { compose, type Meta } from './middleware.js';
-import { definePolicy } from './policy.js';
-import type { RoleStore } from './store.js';
-import { AuthorizationError } from './errors.js';
+import { definePolicy } from '../core/policy.js';
+import type { RoleStore } from '../core/store.js';
+import { AuthorizationError } from '../core/errors.js';
 
 const policy = definePolicy({
   permissions: ['invoice:read'],

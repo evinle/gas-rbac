@@ -1,7 +1,7 @@
 import { getConfig } from './config.js';
 import { getPrincipal } from './context.js';
-import { can as canGiven, permissionsFor as permissionsForGiven, require as requireGiven } from './authorization.js';
-import { resolvePermissions } from './roles.js';
+import { can as canGiven, permissionsFor as permissionsForGiven, require as requireGiven } from '../core/authorization.js';
+import { resolvePermissions } from '../core/roles.js';
 import { createRegistry } from './registry.js';
 import { auth, context, errorMask, logger } from './shipped-middleware.js';
 
