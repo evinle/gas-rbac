@@ -1,7 +1,14 @@
-// Runnable walkthrough of every Phase 1 feature, from the outside, importing
-// only what a real consumer would: `../../src/index.js`. Run with:
+// Runnable walkthrough of Phase 1's explicit-argument primitives -- testing
+// a handler's authorization logic without wiring up dispatch or ambient
+// context. Imported from authorization.ts directly rather than the top-level
+// package export, since `can`/`require`/`permissionsFor` at that barrel are
+// now the ambient, no-argument versions Phase 2 adds (see rbac.ts) -- those
+// only work from inside a dispatched route, which this example doesn't set
+// up. For that walkthrough, see phase2-demo.ts alongside this file. Run with:
 //   npx tsx examples/invoice-app/demo.ts
-import { AuthorizationError, can, permissionsFor, require, resolvePermissions } from '../../src/index.js';
+import { can, permissionsFor, require } from '../../src/authorization.js';
+import { AuthorizationError } from '../../src/errors.js';
+import { resolvePermissions } from '../../src/roles.js';
 import { policy } from './policy.js';
 import { roleStore } from './store.js';
 

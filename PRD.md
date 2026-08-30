@@ -194,12 +194,14 @@ This is the extensibility story, and the reason logging and error handling are i
 ### Contract
 
 ```ts
-type Meta       = { name: string; perm: Perm | null };
+type Meta       = { name: string; perm: Perm | null; principalEmail?: string };
 type Handler    = (...args: unknown[]) => unknown;
 type Middleware = (next: Handler, meta: Meta) => Handler;
 ```
 
 A middleware receives the next handler and the route's metadata, and returns a replacement. `meta` arrives once at composition time and the returned closure captures it, so per-request work stays in the inner function.
+
+`principalEmail` is mutable and set by `context()`, not read-only route metadata like the other two fields — it exists because `logger()` needs to know who was denied, but sits outside `context()` in the composition order (below), so by the time `logger` handles a thrown error, `context`'s `runAs` has already restored the ambient principal in its `finally`. `meta` is the one object every middleware shares regardless of nesting depth, so it's the side channel that survives past that.
 
 No `(req, res, next)`. There is no response object in Apps Script. Handlers return values and the platform serializes them. Copying the Express signature would be imitation without the mechanism behind it.
 
@@ -245,9 +247,19 @@ The rebuild itself is close to free. Constructing an object and composing closur
 
 ## Build map
 
-**Phase 1, core.** `definePolicy`, `PermissionOf`, role resolution, the store interface, `can`, `require`, `permissionsFor`. Pure TypeScript, no Apps Script references, tested with vitest against a fake store. This is the half that should have real test coverage.
+**Phase 1, core — done.** `definePolicy`, `PermissionOf`, role resolution, the store interface, and explicit-argument `can`/`require`/`permissionsFor` (`src/policy.ts`, `src/roles.ts`, `src/authorization.ts`). Pure TypeScript, no Apps Script references, tested with vitest against a fake store. Walkthrough: `examples/invoice-app/demo.ts`.
 
-**Phase 2, the runner.** The `requires`/`anyone` wrapper, late-bound middleware composition, `audit`, and the single static `__rbacDispatch` entry point that `google.script.run` sees (see Registration, above — no build step required, prototype confirmed). Ship `context`, `auth`, `errorMask`, `logger`.
+Building it surfaced a real bug worth recording: `can`/`require` were originally generic over `Perm` inferred from *both* arguments, so TypeScript unioned a typo'd permission into the inferred type instead of rejecting it, silently defeating the "a typo fails the build" goal. Fixed with `NoInfer<Perm>` on the `perm` parameter, and locked in with a `@ts-expect-error`-based type-test file (`src/authorization.type-test.ts`) since vitest doesn't type-check.
+
+**Phase 2, the runner — done.** The `requires`/`anyone` wrapper, late-bound middleware composition, `audit`, ambient context (`runAs`/`getPrincipal`), the ambient `can`/`require`/`permissionsFor` a route handler actually calls, and the single static `__rbacDispatch` entry point (`src/registry.ts`, `src/context.ts`, `src/middleware.ts`, `src/shipped-middleware.ts`, `src/rbac.ts`). Ships `context`, `auth`, `errorMask`, `logger`. Walkthrough: `examples/invoice-app/phase2-demo.ts`.
+
+Three things the build surfaced that the spec above didn't fully account for:
+
+- **Duplicate detection moved from `requires()` to `audit()`.** `requires()` now lets a second registration under the same name silently shadow the first — matching what the Registration section already said ("the second silently shadows the first") — rather than throwing immediately. `audit()` is the one place that reports it, which is also what makes throw-in-dev/log-in-prod a single decision instead of one made ad hoc at every call site.
+- **`Meta` needed a mutable field, `principalEmail`, not in the original Contract type.** Composition order is `errorMask` wraps `logger` wraps `context` wraps `auth`. `context`'s `runAs` restores the ambient principal in a `finally` on the way out, which runs *before* an inner exception reaches `logger`'s own catch block — so by the time `logger` wants to record who was denied, ambient context is already gone. `context` now writes the resolved email onto the shared `meta` object as a side channel; `logger` reads it from there instead of the ambient store, since `meta` is the one object every middleware in the chain shares regardless of nesting depth.
+- **`errorMask` must not log.** It sits outside `logger` in the chain, so by the time its catch runs, `logger`'s catch has already seen the real, unmasked error and logged it. An earlier draft had `errorMask` log too, which would have double-recorded every denial.
+
+Not yet built: per-route middleware (attached before the handler at registration, per "Writing your own" above) — only global `use()` exists so far. Whether `__rbacDispatch` and each `requires()` call actually survive as true top-level globals in a real bundled consumer's output (vs. getting wrapped inside a bundler's module scope) is untested — Phase 3/4's job against a real build, not assumed solved by this existing.
 
 **Phase 3, adapters.** `@you/rbac/gas` with the session resolver, properties store, and script cache wrapper. Split entry points so the core stays importable in Node and testable without stubbing globals.
 
