@@ -17,6 +17,14 @@ const CHAIN_METHODS: ReadonlySet<ChainMethod> = new Set([
   'withUserObject',
 ]);
 
+// The HTML service injects `google` as a real global into the page; there's
+// no @types package for it (see above), so this is the one ambient
+// declaration this module needs to default the parameter below to the real
+// thing, the same way src/gas/cache.ts defaults `cache` to
+// `CacheService.getScriptCache()`. A test still passes its own fake
+// explicitly and never touches this declaration.
+declare const google: { script: { run: ScriptRun } };
+
 export interface ScriptRun {
   // `any` rather than `unknown` on the callback params: the handler runs
   // against whichever route gets dispatched next, so it can't be pinned
@@ -53,7 +61,7 @@ export type TypedRun<T extends RouteMap> = {
 // is exactly why audit() rejects a route registered under one of these
 // three names: it would silently never dispatch, since the proxy would
 // invoke the real chain method instead of forwarding it.
-export function typedRun<T extends RouteMap>(scriptRun: ScriptRun): TypedRun<T> {
+export function typedRun<T extends RouteMap>(scriptRun: ScriptRun = google.script.run): TypedRun<T> {
   return new Proxy(scriptRun, {
     get(target, prop, receiver) {
       if (typeof prop !== 'string') {

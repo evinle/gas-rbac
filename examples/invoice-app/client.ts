@@ -22,11 +22,9 @@ interface RouteMap_ extends RouteMap {
 
 function dispatch<K extends keyof RouteMap_>(name: K, ...args: Parameters<RouteMap_[K]>): Promise<ReturnType<RouteMap_[K]>> {
   return new Promise((resolve, reject) => {
-    (
-      typedRun<RouteMap_>((globalThis as any).google.script.run)
-        .withSuccessHandler(resolve)
-        .withFailureHandler(reject)[name] as (...a: unknown[]) => void
-    )(...args);
+    (typedRun<RouteMap_>().withSuccessHandler(resolve).withFailureHandler(reject)[name] as (...a: unknown[]) => void)(
+      ...args,
+    );
   });
 }
 
