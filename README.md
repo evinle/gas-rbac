@@ -23,7 +23,7 @@ This isn't published to npm yet — consume it as a local/workspace dependency, 
 
 ```ts
 // policy.ts
-import { definePolicy } from 'gas-rbac';
+import { definePolicy } from '@evinle/gas-rbac';
 
 export const policy = definePolicy({
   permissions: ['invoice:read', 'invoice:submit', 'invoice:approve'],
@@ -35,7 +35,7 @@ export const policy = definePolicy({
   defaultRoles: ['member'],
 } as const);
 
-export type Perm = import('gas-rbac').PermissionOf<typeof policy>;
+export type Perm = import('@evinle/gas-rbac').PermissionOf<typeof policy>;
 ```
 
 `as const` is required — it's what lets `PermissionOf` derive a real string-literal union instead of widening everything to `string`, which is the whole point: a typo'd permission string fails the build instead of silently denying at runtime.
@@ -44,8 +44,8 @@ export type Perm = import('gas-rbac').PermissionOf<typeof policy>;
 
 ```ts
 // server.ts
-import { init, rbac, __rbacDispatch, permissionsFor } from 'gas-rbac';
-import { createPropertiesStore, createSessionResolver, withScriptCache } from 'gas-rbac/gas';
+import { init, rbac, __rbacDispatch, permissionsFor } from '@evinle/gas-rbac';
+import { createPropertiesStore, createSessionResolver, withScriptCache } from '@evinle/gas-rbac/gas';
 import { policy } from './policy.js';
 
 init({
@@ -82,7 +82,7 @@ The route name is written twice on purpose — once as the binding, once as the 
 
 ```ts
 // client.ts, bundled separately and loaded in your HTML template
-import { typedRun, type RouteMap } from 'gas-rbac/client';
+import { typedRun, type RouteMap } from '@evinle/gas-rbac/client';
 
 interface Routes extends RouteMap {
   listInvoices(): Invoice[];
@@ -143,21 +143,21 @@ Shipped, applied in this fixed order — outermost first: `errorMask` → `logge
 
 Write your own as `(next, meta) => (...args) => ...` and attach it with `rbac.use()`. Two rules: stay synchronous (Apps Script has no dependable event loop — a `Promise` here is a trap that only misbehaves under load), and keep construction cheap, since the whole app rebuilds from scratch on every single `google.script.run` call. Do I/O inside the returned handler, not at middleware-factory time.
 
-## The typed client (`gas-rbac/client`)
+## The typed client (`@evinle/gas-rbac/client`)
 
 `typedRun<RouteMap>()` wraps `google.script.run` in a `Proxy`: `withSuccessHandler`, `withFailureHandler`, and `withUserObject` pass straight through to the real chain methods and hand back the proxy itself, so chaining keeps working exactly like plain `google.script.run`. Any other property access is treated as a route name and forwarded to `__rbacDispatch(name, ...args)`.
 
 `RouteMap` is a plain interface you hand-write, listing the routes you registered server-side — the same role `ServerAPI`-style interfaces play for other Apps Script projects' `google.script.run` typings. Nothing checks it against your actual registrations; keeping the two in sync is on you, the same tradeoff every hand-written client type carries. It's also entirely optional — skip it and call `__rbacDispatch` directly through raw `google.script.run`, untyped.
 
-This is client-side browser code and lives in its own `gas-rbac/client` entry point specifically so importing it never pulls in anything from the server-side `.` or `./gas` entry points, and vice versa.
+This is client-side browser code and lives in its own `@evinle/gas-rbac/client` entry point specifically so importing it never pulls in anything from the server-side `.` or `./gas` entry points, and vice versa.
 
 ## Package layout
 
 Three separate entry points, deliberately not one:
 
-- `gas-rbac` — the core policy/runtime API (`definePolicy`, `init`, `rbac`, middleware). No Apps Script globals referenced anywhere in this path; testable in plain Node.
-- `gas-rbac/gas` — the real Apps Script adapters (`createSessionResolver`, `createPropertiesStore`, `withScriptCache`, `invalidateCachedRoles`). The only entry point that touches `Session`, `PropertiesService`, `CacheService`, or `Utilities`.
-- `gas-rbac/client` — the browser-side typed client (`typedRun`). Runs inside the HTML service page, never on the server.
+- `@evinle/gas-rbac` — the core policy/runtime API (`definePolicy`, `init`, `rbac`, middleware). No Apps Script globals referenced anywhere in this path; testable in plain Node.
+- `@evinle/gas-rbac/gas` — the real Apps Script adapters (`createSessionResolver`, `createPropertiesStore`, `withScriptCache`, `invalidateCachedRoles`). The only entry point that touches `Session`, `PropertiesService`, `CacheService`, or `Utilities`.
+- `@evinle/gas-rbac/client` — the browser-side typed client (`typedRun`). Runs inside the HTML service page, never on the server.
 
 Importing the core package should never drag in Apps Script server globals or browser globals you don't need for a given file.
 

@@ -1,5 +1,5 @@
 {
-  "name": "gas-rbac",
+  "name": "@evinle/gas-rbac",
   "version": "0.0.0",
   "description": "Role-based access control for Google Apps Script web apps",
   "type": "module",
