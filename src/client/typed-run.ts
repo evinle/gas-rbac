@@ -61,19 +61,34 @@ export type TypedRun<T extends RouteMap> = {
 // is exactly why audit() rejects a route registered under one of these
 // three names: it would silently never dispatch, since the proxy would
 // invoke the real chain method instead of forwarding it.
+// Apps Script's own docs only ever show withSuccessHandler/withFailureHandler
+// chained as one unbroken expression -- never split across statements that
+// re-reference the base google.script.run object. That implies each chain
+// call's real return value, not the original object, is what actually
+// carries the accumulated handler config forward. So each chain call below
+// re-wraps whatever the real method actually returned, instead of assuming
+// it's always the same `target` -- safe either way (a no-op if the real
+// implementation does mutate itself and return `this`), but load-bearing if
+// it doesn't: discarding that return and continuing to call through the
+// original `target` would silently drop the handler registration, so the
+// RPC still dispatches and the server still runs, but nothing is listening
+// for the response.
 export function typedRun<T extends RouteMap>(scriptRun: ScriptRun = google.script.run): TypedRun<T> {
-  return new Proxy(scriptRun, {
-    get(target, prop, receiver) {
-      if (typeof prop !== 'string') {
-        return Reflect.get(target, prop, receiver);
-      }
-      if (CHAIN_METHODS.has(prop as ChainMethod)) {
-        return (...args: unknown[]) => {
-          (target[prop] as (...a: unknown[]) => unknown)(...args);
-          return receiver;
-        };
-      }
-      return (...args: unknown[]) => target.__rbacDispatch(prop, ...args);
-    },
-  }) as unknown as TypedRun<T>;
+  function wrap(target: ScriptRun): TypedRun<T> {
+    return new Proxy(target, {
+      get(t, prop, receiver) {
+        if (typeof prop !== 'string') {
+          return Reflect.get(t, prop, receiver);
+        }
+        if (CHAIN_METHODS.has(prop as ChainMethod)) {
+          return (...args: unknown[]) => {
+            const next = (t[prop] as (...a: unknown[]) => unknown)(...args) as ScriptRun;
+            return wrap(next);
+          };
+        }
+        return (...args: unknown[]) => t.__rbacDispatch(prop, ...args);
+      },
+    }) as unknown as TypedRun<T>;
+  }
+  return wrap(scriptRun);
 }
