@@ -19,6 +19,8 @@ The failure that motivates this package: **every global function in an Apps Scri
 
 So gas-rbac has one job: make the set of reachable functions explicit, and make each one carry a permission.
 
+Google's own building blocks don't cover this gap. Workspace admin controls, like scoping API access to specific Groups or OUs, decide who can reach the app at all, not what the app does once it's running; nothing stops a route from calling out to any resource the deployment's own grants allow, regardless of which visitor triggered it. The Advanced Drive Service is the wrong tool from the other direction: its sharing model is per-file and per-folder, not per-role, so it can't express "members submit, admins approve." And using a Spreadsheet as the access-control store under execute-as-user just moves the problem: the visiting user's own Drive permissions become the real boundary, and anyone who can open that sheet can edit their own row.
+
 ## The threat model
 
 Read this before the API reference.
