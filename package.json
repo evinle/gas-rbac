@@ -1,6 +1,6 @@
 {
   "name": "@evinle/gas-rbac",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Role-based access control for Google Apps Script web apps",
   "type": "module",
   "repository": {
@@ -12,12 +12,26 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./gas": { "types": "./dist/gas/index.d.ts", "default": "./dist/gas/index.js" },
-    "./client": { "types": "./dist/client/index.d.ts", "default": "./dist/client/index.js" },
-    "./vite-plugin": { "types": "./dist/vite-plugin/index.d.ts", "default": "./dist/vite-plugin/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./gas": {
+      "types": "./dist/gas/index.d.ts",
+      "default": "./dist/gas/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./vite-plugin": {
+      "types": "./dist/vite-plugin/index.d.ts",
+      "default": "./dist/vite-plugin/index.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
