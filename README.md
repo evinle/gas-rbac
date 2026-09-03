@@ -15,7 +15,11 @@ If you take one thing from this file: every function you register is reachable b
 
 ## Install
 
-This isn't published to npm yet — consume it as a local/workspace dependency, or copy `src/` in. It bundles into the deployed `.gs` file the same way any other dependency in your Apps Script project would (see Deploying, below).
+Published to the public npm registry: `npm install @evinle/gas-rbac`. No registry config or auth token needed to install — it's a public scoped package.
+
+It bundles into the deployed `.gs` file the same way any other dependency in your Apps Script project would (see Deploying, below).
+
+**Publishing** (maintainers only): `npm publish`, logged in as a user with publish rights on the `@evinle` npm scope (`npm login` first if needed). `publishConfig.access: "public"` is required on first publish — npm defaults a scoped package to private otherwise, which fails outright on a free account and silently gatekeeps on a paid one.
 
 ## GAS naming convention: the trailing underscore
 
