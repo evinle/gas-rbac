@@ -9,7 +9,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "types": ["google-apps-script"]
+    "types": ["google-apps-script", "node"]
   },
   "include": ["src", "examples"]
 }

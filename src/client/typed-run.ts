@@ -73,7 +73,35 @@ export type TypedRun<T extends RouteMap> = {
 // original `target` would silently drop the handler registration, so the
 // RPC still dispatches and the server still runs, but nothing is listening
 // for the response.
-export function typedRun<T extends RouteMap>(scriptRun: ScriptRun = google.script.run): TypedRun<T> {
+export interface TypedRunOptions {
+  // 'rbacDispatch' (default) matches the library's default single-dispatch
+  // mode -- every call forwarded to __rbacDispatch(name, ...args), the one
+  // static entry point that always exists server-side.
+  //
+  // 'named' matches an app that's opted into gas-rbac's Vite codegen
+  // (@evinle/gas-rbac/vite-plugin): each route is a real, separately named
+  // top-level function server-side, so google.script.run already exposes it
+  // directly -- going through __rbacDispatch here would just be an extra
+  // hop to the exact same place, and would defeat the whole point of
+  // codegen, which is making each route show up by name in GAS's Executions
+  // log and the browser Network tab instead of every call reading
+  // __rbacDispatch.
+  dispatch?: 'rbacDispatch' | 'named';
+}
+
+export function typedRun<T extends RouteMap>(
+  scriptRun: ScriptRun = google.script.run,
+  options: TypedRunOptions = {},
+): TypedRun<T> {
+  if ((options.dispatch ?? 'rbacDispatch') === 'named') {
+    // No interception needed: every route is a real, separately named
+    // function google.script.run already exposes, and google.script.run's
+    // own chain methods already return something with those same real
+    // methods on it -- there's nothing left for a Proxy to redirect. This
+    // is a type-only view over the real object, not a wrapper.
+    return scriptRun as unknown as TypedRun<T>;
+  }
+
   function wrap(target: ScriptRun): TypedRun<T> {
     return new Proxy(target, {
       get(t, prop, receiver) {

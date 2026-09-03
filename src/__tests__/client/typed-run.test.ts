@@ -99,6 +99,39 @@ describe('typedRun', () => {
     expect(dispatchCalls).toEqual([['submitInvoice', 10]]);
   });
 
+  it('calls the route by name directly, not through __rbacDispatch, when dispatch: "named" is set', () => {
+    const calls: unknown[][] = [];
+    const scriptRun: any = {
+      withSuccessHandler: vi.fn(),
+      withFailureHandler: vi.fn(),
+      withUserObject: vi.fn(),
+      __rbacDispatch: () => {
+        throw new Error('should not reach __rbacDispatch in named-dispatch mode');
+      },
+      submitInvoice: (...args: unknown[]) => calls.push(['submitInvoice', ...args]),
+    };
+
+    typedRun<RouteMapForTest>(scriptRun, { dispatch: 'named' }).submitInvoice(500);
+
+    expect(calls).toEqual([['submitInvoice', 500]]);
+  });
+
+  it("in named mode, chains through google.script.run's own real chain methods with no rewrapping", () => {
+    const calls: unknown[][] = [];
+    const onSuccess = () => {};
+    const chained: any = {
+      submitInvoice: (...args: unknown[]) => calls.push(['submitInvoice', ...args]),
+    };
+    const scriptRun: any = {
+      withSuccessHandler: vi.fn(() => chained),
+    };
+
+    typedRun<RouteMapForTest>(scriptRun, { dispatch: 'named' }).withSuccessHandler(onSuccess).submitInvoice(10);
+
+    expect(scriptRun.withSuccessHandler).toHaveBeenCalledWith(onSuccess);
+    expect(calls).toEqual([['submitInvoice', 10]]);
+  });
+
   it('a route registered under a reserved chain-method name never reaches __rbacDispatch', () => {
     const scriptRun = fakeScriptRun();
     // Cast needed only because RouteMapForTest doesn't declare this route --

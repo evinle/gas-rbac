@@ -1,15 +1,27 @@
 {
   "name": "@evinle/gas-rbac",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Role-based access control for Google Apps Script web apps",
   "type": "module",
-  "main": "./src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evinle/gas-rbac.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
   "exports": {
-    ".": "./src/index.ts",
-    "./gas": "./src/gas/index.ts",
-    "./client": "./src/client/index.ts"
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./gas": { "types": "./dist/gas/index.d.ts", "default": "./dist/gas/index.js" },
+    "./client": { "types": "./dist/client/index.d.ts", "default": "./dist/client/index.js" },
+    "./vite-plugin": { "types": "./dist/vite-plugin/index.d.ts", "default": "./dist/vite-plugin/index.js" }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:all": "npm run test && npm run typecheck",
@@ -17,11 +29,14 @@
     "demo:phase2": "tsx examples/invoice-app/phase2-demo.ts",
     "build:invoice-app": "node examples/invoice-app/build.js"
   },
+  "dependencies": {
+    "typescript": "^5.6.0"
+  },
   "devDependencies": {
     "@types/google-apps-script": "^2.0.12",
+    "@types/node": "^26.4.1",
     "esbuild": "^0.28.2",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }
 }
