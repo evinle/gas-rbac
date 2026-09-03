@@ -9,13 +9,11 @@ Role-based access control for Google Apps Script web apps, written in TypeScript
 npm install @evinle/gas-rbac
 ```
 
-No registry config or auth token needed. It's a public, unscoped-access package under the `@evinle` scope.
-
 ## Why this exists
 
-Apps Script has no application-layer authorization. A web app's deployment settings give you three choices for who can open it and nothing finer than that. Every project that needs "admins see the ledger, everyone else can submit" ends up hand-rolling an email allowlist, and those allowlists rot.
-
 The failure that motivates this package: **every global function in an Apps Script web app is a public endpoint.** `google.script.run.anyFunctionName()` works from the browser console whether or not a button calls it. There's no route table, no allowlist, beneath the deployment's access setting. Hiding UI does nothing. Most Apps Script authors don't know this, and it's the most common way these apps leak.
+
+Apps Script has no application-layer authorization. A web app's deployment settings give you three choices for who can open it and nothing finer than that. Every project that needs "admins see the ledger, everyone else can submit" ends up hand-rolling an email allowlist, and those allowlists rot.
 
 So gas-rbac has one job: make the set of reachable functions explicit, and make each one carry a permission.
 
